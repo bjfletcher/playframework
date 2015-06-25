@@ -579,9 +579,12 @@ object Enumerator {
    *
    * @param file The file to create the enumerator from.
    * @param chunkSize The size of chunks to read from the file.
+   * @param skip Optional number of bytes to skip over and discard.
    */
-  def fromFile(file: java.io.File, chunkSize: Int = 1024 * 8)(implicit ec: ExecutionContext): Enumerator[Array[Byte]] = {
-    fromStream(new java.io.FileInputStream(file), chunkSize)(ec)
+  def fromFile(file: java.io.File, chunkSize: Int = 1024 * 8, skip: Option[Long] = None)(implicit ec: ExecutionContext): Enumerator[Array[Byte]] = {
+    val stream = new java.io.FileInputStream(file)
+    skip.map(stream.skip)
+    fromStream(stream, chunkSize)(ec)
   }
 
   /**
