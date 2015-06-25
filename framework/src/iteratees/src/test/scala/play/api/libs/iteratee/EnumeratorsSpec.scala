@@ -10,6 +10,7 @@ import java.io.{ ByteArrayInputStream, File, FileOutputStream, OutputStream }
 import java.util.concurrent.{ CountDownLatch, TimeUnit }
 import java.util.concurrent.atomic.AtomicInteger
 import play.api.libs.iteratee.Execution.Implicits.{ defaultExecutionContext => dec }
+import scala.collection.mutable.WrappedArray
 import scala.concurrent.{ Promise, Future, Await }
 import scala.concurrent.duration.Duration
 
@@ -315,8 +316,8 @@ object EnumeratorsSpec extends Specification
           val out = new FileOutputStream(f)
           out.write(content)
           out.close()
-          val enumerator = Enumerator.fromFile(f, skip = Option(2L))(fromFileEC)
-          mustEnumerateTo(Array[Byte](3, 4, 5, 6, 7))(enumerator)
+          val enumerator = Enumerator.fromFile(f, skip = Option(2L))(fromFileEC).map(WrappedArray.make)
+          mustEnumerateTo(WrappedArray.make(Array[Byte](3, 4, 5, 6, 7)))(enumerator)
         } finally {
           f.delete()
         }
