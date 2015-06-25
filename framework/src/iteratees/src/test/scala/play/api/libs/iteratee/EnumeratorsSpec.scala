@@ -307,6 +307,21 @@ object EnumeratorsSpec extends Specification
         }
       }
     }
+    "skip bytes if requested" in {
+      mustExecute(3) { fromFileEC =>
+        val f = File.createTempFile("EnumeratorSpec", "fromFile")
+        try {
+          val content = Array[Byte](1, 2, 3, 4, 5, 6, 7)
+          val out = new FileOutputStream(f)
+          out.write(content)
+          out.close()
+          val enumerator = Enumerator.fromFile(f, skip = Option(2L))(fromFileEC)
+          mustEnumerateTo(Array[Byte](3, 4, 5, 6, 7))(enumerator)
+        } finally {
+          f.delete()
+        }
+      }
+    }
   }
 
   "Enumerator.fromPath" should {
