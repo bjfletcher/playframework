@@ -399,21 +399,51 @@ trait Results {
       )
     }
 
+    /** The HTTP Range header pattern */
+    private lazy val RangeHeader = """^bytes=(\d*)-?(\d*)$""".r
+
     /**
      * Send a file.
      *
      * @param content The file to send.
      * @param inline Use Content-Disposition inline or attachment.
      * @param fileName Function to retrieve the file name (only used for Content-Disposition attachment).
+     * @param onClose Function to run at the end of the file send.
+     * @param range The HTTP range header to send a partial content of the file.
      */
-    def sendFile(content: java.io.File, inline: Boolean = false, fileName: java.io.File => String = _.getName, onClose: () => Unit = () => ()): Result = {
-      val name = fileName(content)
+    def sendFile(content: java.io.File, inline: Boolean = false, fileName: java.io.File => String = _.getName, onClose: () => Unit = () => (),
+      range: Option[String] = None): Result = {
+
+      val name: String = fileName(content)
+
+      val commonHeaders: Map[String, String] = Map(
+        CONTENT_TYPE -> play.api.libs.MimeTypes.forFileName(name).getOrElse(play.api.http.ContentTypes.BINARY),
+        ACCEPT_RANGES -> "bytes"
+      )
+
+      val inlineHeader: Map[String, String] = if (inline) Map.empty else Map(CONTENT_DISPOSITION -> ("attachment; filename=\"" + name + "\""))
+
+      val (rangedStatus: Int, rangedHeaders: Map[String, String], fileSkip: Option[Long]) = range match {
+        case Some(RangeHeader(s, l)) =>
+          // serving a partial content request
+          val start: Long = s.toLong
+          val length: Long = if (l != "") l.toLong else content.length - 1
+          val headers: Map[String, String] = Map(
+            CONTENT_LENGTH -> s"${content.length - start.toLong}",
+            CONTENT_RANGE -> s"bytes $start-$length/${content.length}"
+          )
+          (PARTIAL_CONTENT, headers, Option(start))
+        case _ =>
+          // not a partial content request
+          val headers: Map[String, String] = Map(CONTENT_LENGTH -> content.length.toString)
+          (status, headers, None)
+      }
+
+      val allHeaders = commonHeaders ++ inlineHeader ++ rangedHeaders
+
       Result(
-        ResponseHeader(status, Map(
-          CONTENT_LENGTH -> content.length.toString,
-          CONTENT_TYPE -> play.api.libs.MimeTypes.forFileName(name).getOrElse(play.api.http.ContentTypes.BINARY)
-        ) ++ (if (inline) Map.empty else Map(CONTENT_DISPOSITION -> ("attachment; filename=\"" + name + "\"")))),
-        Enumerator.fromFile(content) &> Enumeratee.onIterateeDone(onClose)(defaultContext)
+        ResponseHeader(rangedStatus, allHeaders),
+        Enumerator.fromFile(content, skip = fileSkip) &> Enumeratee.onIterateeDone(onClose)(defaultContext)
       )
     }
 
