@@ -50,7 +50,7 @@ object ExternalAssets extends Controller {
         }
 
         if (fileToServe.exists) {
-          Ok.sendFile(fileToServe, inline = true).withHeaders(CACHE_CONTROL -> "max-age=3600")
+          Ok.sendFile(fileToServe, inline = true, range = request.headers.get(RANGE)).withHeaders(CACHE_CONTROL -> "max-age=3600")
         } else {
           NotFound
         }
