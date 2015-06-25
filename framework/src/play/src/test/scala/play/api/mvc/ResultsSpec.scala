@@ -3,6 +3,7 @@
  */
 package play.api.mvc
 
+import java.io.FileOutputStream
 import java.nio.file.{ Files, Paths }
 
 import org.joda.time.{ DateTimeZone, DateTime }
@@ -17,6 +18,8 @@ import play.api.{ Configuration, Environment, Play }
 import play.api.http.HeaderNames._
 import play.api.http.Status._
 import play.core.test._
+
+import scala.io.Source
 
 object ResultsSpec extends Specification {
 
@@ -185,6 +188,32 @@ object ResultsSpec extends Specification {
 
       (rh.status aka "status" must_== PAYMENT_REQUIRED) and
         (rh.headers.get(CONTENT_DISPOSITION) aka "disposition" must beNone)
+    }
+
+    "support sending partial content of file by confirming acceptance of byte ranges in Ok" in {
+      val file = new java.io.File("test.tmp")
+      try {
+        file.createNewFile()
+        val rh = Ok.sendFile(file).header
+        (rh.status aka "status" must_== OK) and
+          (rh.headers.get(ACCEPT_RANGES) aka "accept ranges" must beSome("bytes"))
+      } finally {
+        file.delete()
+      }
+    }
+
+    "support sending partial content of file by sending content range header in response" in {
+      val file = new java.io.File("test.tmp")
+      try {
+        val out = new FileOutputStream(file)
+        out.write(Array[Byte](1, 2, 3, 4, 5, 6, 7))
+        out.close()
+        val rh = Ok.sendFile(file, range = Option("bytes=2-")).header
+        (rh.status aka "status" must_== PARTIAL_CONTENT) and
+          (rh.headers.get(CONTENT_RANGE) aka "content range" must beSome("bytes 2-6/7"))
+      } finally {
+        file.delete()
+      }
     }
 
     "support sending a path with Ok status" in {
