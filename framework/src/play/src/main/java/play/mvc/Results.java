@@ -1511,10 +1511,18 @@ public class Results {
         }
 
         public Status(play.api.mvc.Results.Status status, File content, boolean inline, String filename) {
+            this(status, content, inline, filename);
+        }
+
+        public Status(play.api.mvc.Results.Status status, File content, String range) {
+            this(status, content, false, content.getName(), range);
+        }
+
+        public Status(play.api.mvc.Results.Status status, File content, boolean inline, String filename, String range) {
             if(content == null) {
                 throw new NullPointerException("null content");
             }
-            wrappedResult = play.core.j.JavaResults.sendFile(status, content, inline, filename);
+            wrappedResult = play.core.j.JavaResults.sendFile(status, content, inline, filename, range);
         }
 
         public Status(play.api.mvc.Results.Status status, File content, int chunkSize) {
