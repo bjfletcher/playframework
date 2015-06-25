@@ -1511,7 +1511,7 @@ public class Results {
         }
 
         public Status(play.api.mvc.Results.Status status, File content, boolean inline, String filename) {
-            this(status, content, inline, filename);
+            this(status, content, inline, filename, null);
         }
 
         public Status(play.api.mvc.Results.Status status, File content, String range) {
