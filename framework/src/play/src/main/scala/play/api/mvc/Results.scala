@@ -429,6 +429,7 @@ trait Results {
           val start: Long = s.toLong
           val length: Long = if (l != "") l.toLong else content.length - 1
           val headers: Map[String, String] = Map(
+            CONNECTION -> "keep-alive",
             CONTENT_LENGTH -> s"${content.length - start.toLong}",
             CONTENT_RANGE -> s"bytes $start-$length/${content.length}"
           )
