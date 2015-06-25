@@ -3,13 +3,13 @@
  */
 package play.libs;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.Arrays;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import play.core.j.FPromiseHelper;
 import scala.concurrent.ExecutionContext;
@@ -21,66 +21,10 @@ import scala.concurrent.Future;
 public class F {
 
     /**
-     * A Callback with no arguments.
-     */
-    public static interface Callback0 {
-        public void invoke() throws Throwable;
-    }
-
-    /**
-     * A Callback with a single argument.
-     */
-    public static interface Callback<A> {
-        public void invoke(A a) throws Throwable;
-    }
-
-    /**
-     * A Callback with 2 arguments.
-     */
-    public static interface Callback2<A,B> {
-        public void invoke(A a, B b) throws Throwable;
-    }
-
-    /**
-     * A Callback with 3 arguments.
-     */
-    public static interface Callback3<A,B,C> {
-        public void invoke(A a, B b, C c) throws Throwable;
-    }
-
-    /**
-     * A Function with no arguments.
-     */
-    public static interface Function0<R> {
-        public R apply() throws Throwable;
-    }
-
-    /**
-     * A Function with a single argument.
-     */
-    public static interface Function<A,R> {
-        public R apply(A a) throws Throwable;
-    }
-
-    /**
-     * A Function with 2 arguments.
-     */
-    public static interface Function2<A,B,R> {
-        public R apply(A a, B b) throws Throwable;
-    }
-
-    /**
      * A Function with 3 arguments.
      */
-    public static interface Function3<A,B,C,R> {
-        public R apply(A a, B b, C c) throws Throwable;
-    }
-
-    /**
-     * A Predicate (boolean-valued function) with a single argument.
-     */
-    public static interface Predicate<A> {
-        public boolean test(A a) throws Throwable;
+    public interface Function3<A,B,C,R> {
+        R apply(A a, B b, C c) throws Throwable;
     }
 
     /**
@@ -162,7 +106,7 @@ public class F {
          * @return a promise without a real value
          * @param delay The delay expressed in milliseconds.
          */
-        public static <A> Promise<scala.Unit> timeout(long delay) {
+        public static Promise<scala.Unit> timeout(long delay) {
             return timeout(delay, TimeUnit.MILLISECONDS);
         }
 
@@ -176,7 +120,7 @@ public class F {
          * @param unit The Unit.
          * @return a promise without a real value
          */
-        public static <A> Promise<scala.Unit> timeout(long delay, TimeUnit unit) {
+        public static Promise<scala.Unit> timeout(long delay, TimeUnit unit) {
             return FPromiseHelper.timeout(delay, unit);
         }
 
@@ -189,7 +133,7 @@ public class F {
          * @return A single promise whose methods act on the list of redeemed promises
          */
         public static <A> Promise<List<A>> sequence(Iterable<Promise<A>> promises){
-            return FPromiseHelper.<A>sequence(promises, HttpExecution.defaultContext());
+            return FPromiseHelper.sequence(promises, HttpExecution.defaultContext());
         }
 
         /**
@@ -200,7 +144,7 @@ public class F {
          * @return A single promise whose methods act on the list of redeemed promises
          */
         public static <A> Promise<List<A>> sequence(Iterable<Promise<A>> promises, ExecutionContext ec){
-            return FPromiseHelper.<A>sequence(promises, ec);
+            return FPromiseHelper.sequence(promises, ec);
         }
 
         /**
@@ -227,7 +171,7 @@ public class F {
          *
          * @param function Used to fulfill the Promise.
          */
-        public static <A> Promise<A> promise(Function0<A> function) {
+        public static <A> Promise<A> promise(Supplier<A> function) {
             return FPromiseHelper.promise(function, HttpExecution.defaultContext());
         }
 
@@ -237,7 +181,7 @@ public class F {
          * @param function Used to fulfill the Promise.
          * @param ec The ExecutionContext to run the function in.
          */
-        public static <A> Promise<A> promise(Function0<A> function, ExecutionContext ec) {
+        public static <A> Promise<A> promise(Supplier<A> function, ExecutionContext ec) {
             return FPromiseHelper.promise(function, ec);
         }
 
@@ -251,7 +195,7 @@ public class F {
          * @param delay The time to wait.
          * @param unit The units to use for the delay.
          */
-        public static <A> Promise<A> delayed(Function0<A> function, long delay, TimeUnit unit) {
+        public static <A> Promise<A> delayed(Supplier<A> function, long delay, TimeUnit unit) {
             return FPromiseHelper.delayed(function, delay, unit, HttpExecution.defaultContext());
         }
 
@@ -264,7 +208,7 @@ public class F {
          * @param unit The units to use for the delay.
          * @param ec The ExecutionContext to run the Function0 in.
          */
-        public static <A> Promise<A> delayed(Function0<A> function, long delay, TimeUnit unit, ExecutionContext ec) {
+        public static <A> Promise<A> delayed(Supplier<A> function, long delay, TimeUnit unit, ExecutionContext ec) {
             return FPromiseHelper.delayed(function, delay, unit, ec);
         }
 
@@ -295,8 +239,9 @@ public class F {
         }
 
         /**
-         * combines the current promise with <code>another</code> promise using `or`
-         * @param another
+         * Combines the current promise with <code>another</code> promise using `or`.
+         *
+         * @param another promise that will be combined
          */
         public <B> Promise<Either<A,B>> or(Promise<B> another) {
             return FPromiseHelper.or(this, another);
@@ -309,7 +254,7 @@ public class F {
          *
          * @param action The action to perform.
          */
-        public void onRedeem(final Callback<A> action) {
+        public void onRedeem(final Consumer<A> action) {
             FPromiseHelper.onRedeem(this, action, HttpExecution.defaultContext());
         }
 
@@ -319,7 +264,7 @@ public class F {
          * @param action The action to perform.
          * @param ec The ExecutionContext to execute the action in.
          */
-        public void onRedeem(final Callback<A> action, ExecutionContext ec) {
+        public void onRedeem(final Consumer<A> action, ExecutionContext ec) {
             FPromiseHelper.onRedeem(this, action, ec);
         }
 
@@ -417,7 +362,7 @@ public class F {
          *
          * @param action The action to perform.
          */
-        public void onFailure(final Callback<Throwable> action) {
+        public void onFailure(final Consumer<Throwable> action) {
             FPromiseHelper.onFailure(this, action, HttpExecution.defaultContext());
         }
 
@@ -427,7 +372,7 @@ public class F {
          * @param action The action to perform.
          * @param ec The ExecutionContext to execute the callback in.
          */
-        public void onFailure(final Callback<Throwable> action, ExecutionContext ec) {
+        public void onFailure(final Consumer<Throwable> action, ExecutionContext ec) {
             FPromiseHelper.onFailure(this, action, ec);
         }
 
@@ -531,7 +476,6 @@ public class F {
 
     }
 
-
     /**
      * RedeemablePromise is an object which can be completed with a value or failed with an exception.
      *
@@ -609,8 +553,7 @@ public class F {
          *         if the completion failed then the result will be an IllegalStateException.
          */
         public Promise<Void> completeWith(Promise other, ExecutionContext ec) {
-            Promise<Void> r = Promise.wrap(FPromiseHelper.completeWith(this.promise, other.future, ec));
-            return r;
+            return Promise.wrap(FPromiseHelper.completeWith(this.promise, other.future, ec));
         }
 
         /**
@@ -635,8 +578,7 @@ public class F {
          *         completion couldn't occur then the result will be false.
          */
         public Promise<Boolean> tryCompleteWith(Promise other, ExecutionContext ec) {
-            Promise<Boolean> r = Promise.wrap(FPromiseHelper.tryCompleteWith(this.promise, other.future, ec));
-            return r;
+            return Promise.wrap(FPromiseHelper.tryCompleteWith(this.promise, other.future, ec));
         }
     }
 
@@ -655,283 +597,21 @@ public class F {
     }
 
     /**
-     * Represents optional values. Instances of <code>Option</code> are either an instance of <code>Some</code> or the object <code>None</code>.
-     */
-    public static abstract class Option<T> implements Collection<T> {
-
-        /**
-         * Is the value of this option defined?
-         *
-         * @return <code>true</code> if the value is defined, otherwise <code>false</code>.
-         */
-        public abstract boolean isDefined();
-
-        @Override
-        public boolean isEmpty() {
-            return !isDefined();
-        }
-
-        /**
-         * Returns the value if defined.
-         *
-         * @return The value if defined, otherwise <code>null</code>.
-         */
-        public abstract T get();
-
-        /**
-         * Constructs a <code>None</code> value.
-         *
-         * @return None
-         */
-        public static <T> None<T> None() {
-            return new None<T>();
-        }
-
-        /**
-         * Construct a <code>Some</code> value.
-         *
-         * @param value The value to make optional
-         * @return Some <code>T</code>.
-         */
-        public static <T> Some<T> Some(T value) {
-            return new Some<T>(value);
-        }
-
-        /**
-         * Get the value if defined, otherwise return the supplied <code>defaultValue</code>.
-         *
-         * @param defaultValue The value to return if the value of this option is not defined
-         * @return The value of this option, or <code>defaultValue</code>.
-         */
-        public T getOrElse(T defaultValue) {
-            if(isDefined()) {
-                return get();
-            } else {
-                return defaultValue;
-            }
-        }
-
-        /**
-         * Map this option to another value.
-         *
-         * @param function The function to map the option using.
-         * @return The mapped option.
-         * @throws RuntimeException if <code>function</code> threw an Exception.  If the exception is a
-         *      <code>RuntimeException</code>, it will be rethrown as is, otherwise it will be wrapped in a
-         *      <code>RuntimeException</code>.
-         */
-        public <A> Option<A> map(Function<T,A> function) {
-            if(isDefined()) {
-                try {
-                    return Some(function.apply(get()));
-                } catch (RuntimeException e) {
-                    throw e;
-                } catch (Throwable t) {
-                    throw new RuntimeException(t);
-                }
-            } else {
-                return None();
-            }
-        }
-
-        @Override
-        public void clear() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean retainAll(Collection<?> c) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean add(Object o) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean remove(Object o) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean removeAll(Collection<?> c) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public boolean addAll(Collection<? extends T> c) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.deepHashCode(this.toArray());
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null) return false;
-            if (!(obj instanceof Option)) return false;
-            return Arrays.deepEquals(this.toArray(), ((Option)obj).toArray());
-        }
-
-    }
-
-    /**
-     * Construct a <code>Some</code> value.
-     *
-     * @param value The value
-     * @return Some value.
-     */
-    public static <A> Some<A> Some(A value) {
-        return new Some<A>(value);
-    }
-
-    /**
-     * Constructs a <code>None</code> value.
-     *
-     * @return None.
-     */
-    public static None None() {
-        return new None();
-    }
-
-    /**
-     * Represents non-existent values.
-     */
-    public static class None<T> extends Option<T> {
-
-        @Override
-        public boolean isDefined() {
-            return false;
-        }
-
-        @Override
-        public int size() {
-            return 0;
-        }
-
-        @Override
-        public T get() {
-            throw new IllegalStateException("No value");
-        }
-
-        public Iterator<T> iterator() {
-            return Collections.<T>emptyList().iterator();
-        }
-
-        @Override
-        public boolean contains(Object o) {
-            return false;
-        }
-
-        @Override
-        public boolean containsAll(Collection<?> c) {
-            return c.size() == 0;
-        }
-
-        @Override
-        public Object[] toArray() {
-            return new Object[0];
-        }
-
-        @Override
-        public <R> R[] toArray(R[] r) {
-            Arrays.fill(r, null);
-            return r;
-        }
-
-        @Override
-        public String toString() {
-            return "None";
-        }
-
-    }
-
-    /**
-     * Represents existing values of type <code>T</code>.
-     */
-    public static class Some<T> extends Option<T> {
-
-        final T value;
-
-        public Some(T value) {
-            this.value = value;
-        }
-
-        @Override
-        public boolean isDefined() {
-            return true;
-        }
-
-        @Override
-        public int size() {
-            return 1;
-        }
-
-        @Override
-        public T get() {
-            return value;
-        }
-
-        public Iterator<T> iterator() {
-            return Collections.singletonList(value).iterator();
-        }
-
-        @Override
-        public boolean contains(Object o) {
-            return o != null && o.equals(value);
-        }
-
-        @Override
-        public boolean containsAll(Collection<?> c) {
-            return (c.size() == 1) && (c.toArray()[0].equals(value));
-        }
-
-        @Override
-        public Object[] toArray() {
-            Object[] result = new Object[1];
-            result[0] = value;
-            return result;
-        }
-
-        @Override
-        public <R> R[] toArray(R[] r) {
-            if(r.length == 0){
-                 R[] array = (R[])Arrays.copyOf(r, 1);
-                 array[0] = (R)value;
-                 return array;
-            }else{
-                 Arrays.fill(r, 1, r.length, null);
-                 r[0] = (R)value;
-                 return r;
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "Some(" + value + ")";
-        }
-    }
-
-    /**
      * Represents a value of one of two possible types (a disjoint union)
      */
-    public static class Either<A, B> {
+    public static class Either<L, R> {
 
         /**
          * The left value.
          */
-        final public Option<A> left;
+        final public Optional<L> left;
 
         /**
          * The right value.
          */
-        final public Option<B> right;
+        final public Optional<R> right;
 
-        private Either(Option<A> left, Option<B> right) {
+        private Either(Optional<L> left, Optional<R> right) {
             this.left = left;
             this.right = right;
         }
@@ -942,8 +622,8 @@ public class F {
          * @param value The value of the left side
          * @return A left sided disjoint union
          */
-        public static <A, B> Either<A, B> Left(A value) {
-            return new Either<A, B>(Some(value), None());
+        public static <L, R> Either<L, R> Left(L value) {
+            return new Either<L, R>(Optional.ofNullable(value), Optional.<R>empty());
         }
 
         /**
@@ -952,13 +632,13 @@ public class F {
          * @param value The value of the right side
          * @return A right sided disjoint union
          */
-        public static <A, B> Either<A, B> Right(B value) {
-            return new Either<A, B>(None(), Some(value));
+        public static <L, R> Either<L, R> Right(R value) {
+            return new Either<L, R>(Optional.<L>empty(), Optional.ofNullable(value));
         }
 
         @Override
         public String toString() {
-            return "Either(left: " + left + ", right: " + right + ")";
+            return "Either(left: " + this.left + ", right: " + this.right + ")";
         }
     }
 

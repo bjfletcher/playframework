@@ -5,6 +5,7 @@ package play.api.libs.concurrent
 
 import java.lang.reflect.Method
 
+import akka.stream.{ ActorFlowMaterializer, FlowMaterializer }
 import com.google.inject.util.Types
 import com.google.inject.{ Binder, Key, AbstractModule }
 import com.google.inject.assistedinject.FactoryModuleBuilder
@@ -261,6 +262,14 @@ class ActorSystemProvider @Inject() (environment: Environment, configuration: Co
 }
 
 /**
+ * Provider for the default flow materializer
+ */
+@Singleton
+class FlowMaterializerProvider @Inject() (actorSystem: ActorSystem) extends Provider[FlowMaterializer] {
+  lazy val get: FlowMaterializer = ActorFlowMaterializer()(actorSystem)
+}
+
+/**
  * Provider for the default execution context
  */
 @Singleton
@@ -289,10 +298,10 @@ object ActorSystemProvider {
 
     val name = config.get[String]("play.akka.actor-system")
     val system = ActorSystem(name, akkaConfig, classLoader)
-    logger.info(s"Starting application default Akka system: $name")
+    logger.debug(s"Starting application default Akka system: $name")
 
     val stopHook = { () =>
-      logger.info(s"Shutdown application default Akka system: $name")
+      logger.debug(s"Shutdown application default Akka system: $name")
       system.shutdown()
 
       config.get[Duration]("play.akka.shutdown-timeout") match {

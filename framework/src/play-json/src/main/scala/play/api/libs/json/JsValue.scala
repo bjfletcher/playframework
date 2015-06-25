@@ -16,6 +16,8 @@ sealed trait JsValue extends JsReadable {
   override def toString = Json.stringify(this)
 
   def validate[A](implicit rds: Reads[A]) = rds.reads(this)
+
+  def validateOpt[A](implicit rds: Reads[A]): JsResult[Option[A]] = JsDefined(this).validateOpt[A]
 }
 
 object JsValue {
@@ -127,7 +129,6 @@ case class JsObject(private val underlying: Map[String, JsValue]) extends JsValu
 
           val newValue = (maybeExistingValue, otherValue) match {
             case (Some(e: JsObject), o: JsObject) => merge(e, o)
-            case (Some(e: JsArray), o: JsArray) => e ++ o
             case _ => otherValue
           }
           otherKey -> newValue

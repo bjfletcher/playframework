@@ -371,11 +371,11 @@ As a result of these changes, your code can now assume that all values of type `
 
 ### Reading Options
 
-`OptionReads` is no longer available by default in 2.4. If you have code of the form `jsv.validate[Option[A]]`, you'll need to either rewrite it or add an additional import:
+`OptionReads` is no longer available by default in 2.4. If you have code of the form `jsv.validate[Option[A]]`, you'll need to rewrite it:
 
 * To get the same result as in 2.3, you can use `JsSuccess(jsv.asOpt[A])`. This will map all validation errors to `None`.
-* To map `JsNull` to `None` and validate the value if it exists, use `jsv.validate(optionWithNull[A])`.
-* To map both `JsNull` and an undefined lookup result to `None`, use `jsLookupResult.getOrElse(JsNull).validate(optionWithNull[A])` or similar.
+* To map both `JsNull` and an undefined lookup result to `None`, use `jsv.validateOpt[A]`.
+* To map `JsNull` to `None` and validate the value if it exists, use `jsv.validate(Reads.optionWithNull[A])`. If the value does not exist the result will be a `JsError`.
 
 ## Testing changes
 
@@ -399,7 +399,7 @@ WS has upgraded from AsyncHttpClient 1.8.x to 1.9.x, which includes a number of 
 
 Configuration settings for WS have changed:
 
-* `ws.acceptAnyCertificate` has been moved under the loose settings as `play.ws.loose.acceptAnyCertificate` to better indicate the insecure nature of blindly accepting any X.509 certificate without validation.
+* `ws.acceptAnyCertificate` has been moved under the loose settings as `play.ws.ssl.loose.acceptAnyCertificate` to better indicate the insecure nature of blindly accepting any X.509 certificate without validation.
 * `ws.ssl.debug` settings have been redefined as booleans, e.g. `play.ws.ssl.debug.all=true`.  Please see [Debugging SSL](https://www.playframework.com/documentation/2.4.x/DebuggingSSL) for details.
 * `ws.ssl.disabledSignatureAlgorithms` and `ws.ssl.disabledKeyAlgorithms` have been redefined as arrays of strings, e.g `play.ws.ssl.disabledSignatureAlgorithms = ["MD2", "MD4", "MD5"]`.
 

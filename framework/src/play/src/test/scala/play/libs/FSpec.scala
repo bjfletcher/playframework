@@ -10,6 +10,7 @@ import org.specs2.mutable._
 import play.api.libs.iteratee.ExecutionSpecification
 import scala.collection.JavaConverters
 import scala.concurrent.{ Future, Promise }
+import java.util.function.{ Consumer, Function, Predicate, Supplier }
 
 object FSpec extends Specification
     with ExecutionSpecification {
@@ -37,29 +38,29 @@ object FSpec extends Specification
     }
 
     "be able to be created from a function (with default ExecutionContext)" in {
-      F.Promise.promise(new F.Function0[Int] {
-        def apply() = 1
+      F.Promise.promise(new Supplier[Int] {
+        def get() = 1
       }).get(5, SECONDS) must equalTo(1)
     }
 
     "be able to be created from a function (with explicit ExecutionContext)" in {
       mustExecute(1) { ec =>
-        F.Promise.promise(new F.Function0[Int] {
-          def apply() = 1
+        F.Promise.promise(new Supplier[Int] {
+          def get() = 1
         }, ec).get(5, SECONDS) must equalTo(1)
       }
     }
 
     "be able to be created after a delay (with default ExecutionContext)" in {
-      F.Promise.delayed(new F.Function0[Int] {
-        def apply() = 1
+      F.Promise.delayed(new Supplier[Int] {
+        def get() = 1
       }, 1, MILLISECONDS).get(5, SECONDS) must equalTo(1)
     }
 
     "be able to be created after a delay (with explicit ExecutionContext)" in {
       mustExecute(1) { ec =>
-        F.Promise.delayed(new F.Function0[Int] {
-          def apply() = 1
+        F.Promise.delayed(new Supplier[Int] {
+          def get() = 1
         }, 1, MILLISECONDS, ec).get(5, SECONDS) must equalTo(1)
       }
     }
@@ -68,8 +69,8 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       val invocations = new LinkedBlockingQueue[Int]()
-      fp.onRedeem(new F.Callback[Int] {
-        def invoke(x: Int) { invocations.offer(x) }
+      fp.onRedeem(new Consumer[Int] {
+        def accept(x: Int) { invocations.offer(x) }
       })
       p.success(99)
       invocations.poll(5, SECONDS) must equalTo(99)
@@ -80,8 +81,8 @@ object FSpec extends Specification
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
         val invocations = new LinkedBlockingQueue[Int]()
-        fp.onRedeem(new F.Callback[Int] {
-          def invoke(x: Int) { invocations.offer(x) }
+        fp.onRedeem(new Consumer[Int] {
+          def accept(x: Int) { invocations.offer(x) }
         }, ec)
         p.success(99)
         invocations.poll(5, SECONDS) must equalTo(99)
@@ -91,7 +92,7 @@ object FSpec extends Specification
     "map its value (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val mapped = fp.map(new F.Function[Int, Int] {
+      val mapped = fp.map(new Function[Int, Int] {
         def apply(x: Int) = 2 * x
       })
       p.success(111)
@@ -102,7 +103,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val mapped = fp.map(new F.Function[Int, Int] {
+        val mapped = fp.map(new Function[Int, Int] {
           def apply(x: Int) = 2 * x
         }, ec)
         p.success(111)
@@ -113,7 +114,7 @@ object FSpec extends Specification
     "recover from a thrown exception (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val recovered = fp.recover(new F.Function[Throwable, Int] {
+      val recovered = fp.recover(new Function[Throwable, Int] {
         def apply(x: Throwable): Int = 99
       })
       p.failure(new RuntimeException("x"))
@@ -124,7 +125,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val recovered = fp.recover(new F.Function[Throwable, Int] {
+        val recovered = fp.recover(new Function[Throwable, Int] {
           def apply(x: Throwable): Int = 99
         }, ec)
         p.failure(new RuntimeException("x"))
@@ -135,7 +136,7 @@ object FSpec extends Specification
     "recoverWith from a thrown exception (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val recovered = fp.recoverWith(new F.Function[Throwable, F.Promise[Int]] {
+      val recovered = fp.recoverWith(new Function[Throwable, F.Promise[Int]] {
         def apply(x: Throwable) = F.Promise.pure(99)
       })
       p.failure(new RuntimeException("x"))
@@ -146,7 +147,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val recovered = fp.recoverWith(new F.Function[Throwable, F.Promise[Int]] {
+        val recovered = fp.recoverWith(new Function[Throwable, F.Promise[Int]] {
           def apply(x: Throwable) = F.Promise.pure(99)
         }, ec)
         p.failure(new RuntimeException("x"))
@@ -175,7 +176,7 @@ object FSpec extends Specification
     "flatMap its value (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val flatMapped = fp.flatMap(new F.Function[Int, F.Promise[Int]] {
+      val flatMapped = fp.flatMap(new Function[Int, F.Promise[Int]] {
         def apply(x: Int) = F.Promise.wrap(Future.successful(2 * x))
       })
       p.success(111)
@@ -186,7 +187,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val flatMapped = fp.flatMap(new F.Function[Int, F.Promise[Int]] {
+        val flatMapped = fp.flatMap(new Function[Int, F.Promise[Int]] {
           def apply(x: Int) = F.Promise.wrap(Future.successful(2 * x))
         }, ec)
         p.success(111)
@@ -197,7 +198,7 @@ object FSpec extends Specification
     "filter its value (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val filtered = fp.filter(new F.Predicate[Int] {
+      val filtered = fp.filter(new Predicate[Int] {
         def test(x: Int) = x > 0
       })
       p.success(1)
@@ -208,7 +209,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val filtered = fp.filter(new F.Predicate[Int] {
+        val filtered = fp.filter(new Predicate[Int] {
           def test(x: Int) = x > 0
         }, ec)
         p.success(1)
@@ -219,7 +220,7 @@ object FSpec extends Specification
     "filter to failure (with default ExecutionContext)" in {
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
-      val filtered = fp.filter(new F.Predicate[Int] {
+      val filtered = fp.filter(new Predicate[Int] {
         def test(x: Int) = x > 0
       })
       p.success(-1)
@@ -230,7 +231,7 @@ object FSpec extends Specification
       val p = Promise[Int]()
       val fp = F.Promise.wrap(p.future)
       mustExecute(1) { ec =>
-        val filtered = fp.filter(new F.Predicate[Int] {
+        val filtered = fp.filter(new Predicate[Int] {
           def test(x: Int) = x > 0
         }, ec)
         p.success(-1)
@@ -241,10 +242,10 @@ object FSpec extends Specification
     "transform its successful value (with default ExecutionContext)" in {
       val p = F.Promise.pure(1)
       val mapped = p.transform(
-        new F.Function[Int, Int] {
+        new Function[Int, Int] {
           def apply(x: Int) = 2 * x
         },
-        new F.Function[Throwable, Throwable] {
+        new Function[Throwable, Throwable] {
           def apply(t: Throwable) = t
         }
       )
@@ -255,10 +256,10 @@ object FSpec extends Specification
       val p = F.Promise.pure(1)
       mustExecute(1) { ec =>
         val mapped = p.transform(
-          new F.Function[Int, Int] {
+          new Function[Int, Int] {
             def apply(x: Int) = 2 * x
           },
-          new F.Function[Throwable, Throwable] {
+          new Function[Throwable, Throwable] {
             def apply(t: Throwable) = t
           },
           ec
@@ -270,10 +271,10 @@ object FSpec extends Specification
     "transform its failed throwable (with default ExecutionContext)" in {
       val p = F.Promise.throwing(new RuntimeException("1"))
       val mapped = p.transform(
-        new F.Function[Int, Int] {
+        new Function[Int, Int] {
           def apply(x: Int) = x
         },
-        new F.Function[Throwable, Throwable] {
+        new Function[Throwable, Throwable] {
           def apply(t: Throwable) = new RuntimeException("2")
         }
       )
@@ -284,10 +285,10 @@ object FSpec extends Specification
       val p = F.Promise.throwing(new RuntimeException("1"))
       mustExecute(1) { ec =>
         val mapped = p.transform(
-          new F.Function[Int, Int] {
+          new Function[Int, Int] {
             def apply(x: Int) = x
           },
-          new F.Function[Throwable, Throwable] {
+          new Function[Throwable, Throwable] {
             def apply(t: Throwable) = new RuntimeException("2")
           },
           ec
@@ -342,7 +343,7 @@ object FSpec extends Specification
       pl.success(1)
       val result = por.get(1, SECONDS)
       result.left.get must equalTo(1)
-      result.right.isDefined must beFalse
+      result.right.isPresent must beFalse
     }
 
     "combine with another promise with 'or'" in {
@@ -350,7 +351,7 @@ object FSpec extends Specification
       por.wrapped.isCompleted must beFalse
       pr.success("x")
       val result = por.get(1, SECONDS)
-      result.left.isDefined must beFalse
+      result.left.isPresent must beFalse
       result.right.get must equalTo("x")
     }
 

@@ -3,6 +3,9 @@
  */
 package play.filters.csrf
 
+import akka.stream.FlowMaterializer
+import akka.util.ByteString
+import play.api.libs.streams.{ Streams, Accumulator }
 import play.api.mvc._
 import play.api.http.HeaderNames._
 import play.filters.csrf.CSRF._
@@ -21,14 +24,17 @@ import scala.concurrent.Future
 class CSRFAction(next: EssentialAction,
     config: CSRFConfig = CSRFConfig(),
     tokenProvider: TokenProvider = SignedTokenProvider,
-    errorHandler: => ErrorHandler = CSRF.DefaultErrorHandler) extends EssentialAction {
+    errorHandler: => ErrorHandler = CSRF.DefaultErrorHandler)(implicit mat: FlowMaterializer) extends EssentialAction {
 
   import CSRFAction._
   import play.api.libs.iteratee.Execution.Implicits.trampoline
 
   // An iteratee that returns a forbidden result saying the CSRF check failed
-  private def checkFailed(req: RequestHeader, msg: String): Iteratee[Array[Byte], Result] =
-    Iteratee.flatten(clearTokenIfInvalid(req, config, errorHandler, msg) map (Done(_)))
+  private def checkFailedIteratee(req: RequestHeader, msg: String): Iteratee[ByteString, Result] =
+    Iteratee.flatten(clearTokenIfInvalid(req, config, errorHandler, msg).map(r => Done(r)))
+
+  private def checkFailed(req: RequestHeader, msg: String): Accumulator[ByteString, Result] =
+    Accumulator.done(clearTokenIfInvalid(req, config, errorHandler, msg))
 
   def apply(request: RequestHeader) = {
 
@@ -60,8 +66,12 @@ class CSRFAction(next: EssentialAction,
 
             // Check the body
             request.contentType match {
-              case Some("application/x-www-form-urlencoded") => checkFormBody(request, headerToken, config.tokenName, next)
-              case Some("multipart/form-data") => checkMultipartBody(request, headerToken, config.tokenName, next)
+              case Some("application/x-www-form-urlencoded") => Streams.iterateeToAccumulator(
+                checkFormBody(request, headerToken, config.tokenName, next)
+              )
+              case Some("multipart/form-data") => Streams.iterateeToAccumulator(
+                checkMultipartBody(request, headerToken, config.tokenName, next)
+              )
               // No way to extract token from other content types
               case Some(content) =>
                 filterLogger.trace(s"[CSRF] Check failed because $content request")
@@ -99,17 +109,17 @@ class CSRFAction(next: EssentialAction,
 
   private def checkFormBody = checkBody[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity) _
   private def checkMultipartBody = checkBody[MultipartFormData[Unit]](multipartFormData[Unit]({
-    case _ => Iteratee.ignore[Array[Byte]].map(_ => MultipartFormData.FilePart("", "", None, ()))
+    case _ => Iteratee.ignore[ByteString].map(_ => MultipartFormData.FilePart("", "", None, ()))
   }), _.dataParts) _
 
   private def checkBody[T](parser: BodyParser[T], extractor: (T => Map[String, Seq[String]]))(request: RequestHeader, tokenFromHeader: String, tokenName: String, next: EssentialAction) = {
     // Take up to 100kb of the body
-    val firstPartOfBody: Iteratee[Array[Byte], Array[Byte]] =
-      Traversable.take[Array[Byte]](config.postBodyBuffer.asInstanceOf[Int]) &>> Iteratee.consume[Array[Byte]]()
+    val firstPartOfBody: Iteratee[ByteString, ByteString] =
+      Traversable.take[ByteString](config.postBodyBuffer.asInstanceOf[Int]) &>> Iteratee.consume[ByteString]()
 
-    firstPartOfBody.flatMap { bytes: Array[Byte] =>
+    firstPartOfBody.flatMap { bytes: ByteString =>
       // Parse the first 100kb
-      val parsedBody = Enumerator(bytes) |>>> parser(request)
+      val parsedBody = Enumerator(bytes) |>>> Streams.accumulatorToIteratee(parser(request))
 
       Iteratee.flatten(parsedBody.map { parseResult =>
         val validToken = parseResult.fold(
@@ -125,10 +135,10 @@ class CSRFAction(next: EssentialAction,
         if (validToken) {
           // Feed the buffered bytes into the next request, and return the iteratee
           filterLogger.trace("[CSRF] Valid token found in body")
-          Iteratee.flatten(Enumerator(bytes) |>> next(request))
+          Iteratee.flatten(Enumerator(bytes) |>> Streams.accumulatorToIteratee(next(request)))
         } else {
           filterLogger.trace("[CSRF] Check failed because no or invalid token found in body")
-          checkFailed(request, "Invalid token found in form body")
+          checkFailedIteratee(request, "Invalid CSRF token found in form body")
         }
       })
     }

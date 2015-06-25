@@ -29,7 +29,7 @@ import scala.util.control.NonFatal
 object BuildSettings {
 
   // Binary compatibility is tested against this version
-  val previousVersion = "3.0.0"
+  val previousVersion = "2.5.0"
 
   // Argument for setting size of permgen space or meta space for all forked processes
   val maxMetaspace = s"-XX:MaxMetaspaceSize=384m"
@@ -210,7 +210,7 @@ object PlayBuild extends Build {
   lazy val IterateesProject = PlayCrossBuiltProject("Play-Iteratees", "iteratees")
     .settings(libraryDependencies ++= iterateesDependencies)
 
-  lazy val StreamsProject = PlayCrossBuiltProject("Play-Streams-Experimental", "play-streams")
+  lazy val StreamsProject = PlayCrossBuiltProject("Play-Streams", "play-streams")
     .settings(libraryDependencies ++= streamsDependencies)
     .dependsOn(IterateesProject)
 
@@ -234,7 +234,7 @@ object PlayBuild extends Build {
     .enablePlugins(SbtTwirl)
     .settings(
       addScalaModules(scalaParserCombinators),
-      libraryDependencies ++= runtime(scalaVersion.value) ++ scalacheckDependencies,
+      libraryDependencies ++= runtime(scalaVersion.value) ++ scalacheckDependencies ++ Seq(scalaJava8Compat),
 
       sourceGenerators in Compile <+= (version, scalaVersion, sbtVersion, sourceManaged in Compile) map PlayVersion,
 
@@ -259,7 +259,9 @@ object PlayBuild extends Build {
       BuildLinkProject,
       IterateesProject % "test->test;compile->compile",
       JsonProject,
-      PlayNettyUtilsProject)
+      PlayNettyUtilsProject,
+      StreamsProject
+    )
 
   lazy val PlayServerProject = PlayCrossBuiltProject("Play-Server", "play-server")
     .settings(libraryDependencies ++= playServerDependencies)

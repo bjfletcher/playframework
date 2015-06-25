@@ -9,6 +9,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.function.Function;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,11 +35,7 @@ public class PromiseTest extends ExecutionTest {
     public void testEmptyPromise() {
         F.RedeemablePromise<Integer> a = F.RedeemablePromise.empty();
 
-        F.Promise<String> b = a.map(new F.Function<Integer, String>() {
-          public String apply(Integer i) {
-            return i.toString();
-          }
-        });
+        F.Promise<String> b = a.map(Object::toString);
 
         a.success(1);
 
@@ -206,13 +203,14 @@ public class PromiseTest extends ExecutionTest {
     }
 
     @Test
-    public void testRedeemValueWithEC() throws Exception {
+    public void testRedeemValueWithEC() {
         mustExecute(1, ec -> {
             F.RedeemablePromise<Integer> p = F.RedeemablePromise.empty();
             LinkedBlockingQueue<Integer> invocations = new LinkedBlockingQueue<>();
             p.onRedeem(invocations::offer, ec);
             p.success(99);
-            assertThat(invocations.poll(5, SECONDS)).isEqualTo(99);
+            try { assertThat(invocations.poll(5, SECONDS)).isEqualTo(99); }
+            catch(InterruptedException e) { throw new RuntimeException(e); }
         });
     }
 
@@ -235,7 +233,7 @@ public class PromiseTest extends ExecutionTest {
     @Test
     public void testSupertypeMap() {
         F.Promise<Integer> a = F.Promise.pure(1);
-        F.Function<Object, String> f = Object::toString;
+        Function<Object, String> f = Object::toString;
         F.Promise<String> b = a.map(f);
         assertThat(b.get(t)).isEqualTo("1");
     }
@@ -259,7 +257,7 @@ public class PromiseTest extends ExecutionTest {
     @Test
     public void testSupertypeFlatMap() {
         F.Promise<Integer> a = F.Promise.pure(1);
-        F.Function<Object, F.Promise<String>> f = o -> F.Promise.pure(o.toString());
+        Function<Object, F.Promise<String>> f = o -> F.Promise.pure(o.toString());
         F.Promise<String> b = a.flatMap(f);
         assertThat(b.get(t)).isEqualTo("1");
     }
@@ -506,7 +504,7 @@ public class PromiseTest extends ExecutionTest {
         left.success(1);
         F.Either<Integer, String> result = either.get(t);
         assertThat(result.left.get()).isEqualTo(1);
-        assertThat(result.right.isDefined()).isFalse();
+        assertThat(result.right.isPresent()).isFalse();
     }
 
     @Test
@@ -516,7 +514,7 @@ public class PromiseTest extends ExecutionTest {
         F.Promise<F.Either<Integer, String>> either = left.or(right);
         right.success("2");
         F.Either<Integer, String> result = either.get(t);
-        assertThat(result.left.isDefined()).isFalse();
+        assertThat(result.left.isPresent()).isFalse();
         assertThat(result.right.get()).isEqualTo("2");
     }
 

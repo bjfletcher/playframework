@@ -5,6 +5,10 @@ package play.api.libs.iteratee
 
 import play.libs.F
 import scala.concurrent.ExecutionContext
+import java.util.function.Consumer
+import java.util.function.BiConsumer
+import java.util.function.Function
+import java.util.function.BiFunction
 
 /**
  * Common functionality for Java tests that use execution contexts.
@@ -18,11 +22,11 @@ class ExecutionTest {
     result
   }
 
-  def testExecution[A](f: F.Function[TestExecutionContext, A]): A = {
+  def testExecution[A](f: Function[TestExecutionContext, A]): A = {
     _testExecution(f.apply)
   }
 
-  def testExecution[A](f: F.Function2[TestExecutionContext, TestExecutionContext, A]): A = {
+  def testExecution[A](f: BiFunction[TestExecutionContext, TestExecutionContext, A]): A = {
     _testExecution(ec1 => _testExecution(ec2 => f(ec1, ec2)))
   }
 
@@ -38,16 +42,12 @@ class ExecutionTest {
     }
   }
 
-  def mustExecute(expectedCount: Int, c: F.Callback[ExecutionContext]): Unit = {
-    _mustExecute(expectedCount)(c.invoke)
+  def mustExecute(expectedCount: Int, c: Consumer[ExecutionContext]): Unit = {
+    _mustExecute(expectedCount)(c.accept)
   }
 
-  def mustExecute(expectedCount1: Int, expectedCount2: Int, c: F.Callback2[ExecutionContext, ExecutionContext]): Unit = {
-    _mustExecute(expectedCount1)(ec1 => _mustExecute(expectedCount2)(ec2 => c.invoke(ec1, ec2)))
-  }
-
-  def mustExecute(expectedCount1: Int, expectedCount2: Int, expectedCount3: Int, c: F.Callback3[ExecutionContext, ExecutionContext, ExecutionContext]): Unit = {
-    _mustExecute(expectedCount1)(ec1 => _mustExecute(expectedCount2)(ec2 => _mustExecute(expectedCount3)(ec3 => c.invoke(ec1, ec2, ec3))))
+  def mustExecute(expectedCount1: Int, expectedCount2: Int, c: BiConsumer[ExecutionContext, ExecutionContext]): Unit = {
+    _mustExecute(expectedCount1)(ec1 => _mustExecute(expectedCount2)(ec2 => c.accept(ec1, ec2)))
   }
 
 }

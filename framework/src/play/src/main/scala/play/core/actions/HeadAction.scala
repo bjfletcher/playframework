@@ -4,6 +4,8 @@
 
 package play.core.actions
 
+import akka.util.ByteString
+import play.api.libs.streams.Accumulator
 import play.api.mvc._
 import play.api.libs.iteratee._
 import play.api.http.{ HttpProtocol, HeaderNames, DefaultWriteables }
@@ -19,9 +21,9 @@ import HeaderNames._
  */
 class HeadAction(action: EssentialAction) extends EssentialAction with DefaultWriteables with HttpProtocol {
 
-  def apply(requestHeader: RequestHeader): Iteratee[Array[Byte], Result] = {
+  def apply(requestHeader: RequestHeader): Accumulator[ByteString, Result] = {
 
-    val bodyIterator: Iteratee[Array[Byte], Result] = action(requestHeader)
+    val bodyAccumulator: Accumulator[ByteString, Result] = action(requestHeader)
 
     def createHeadResult(result: Result): Future[Result] = result match {
       // Respond immediately for bodies which have finished evaluating
@@ -35,7 +37,7 @@ class HeadAction(action: EssentialAction) extends EssentialAction with DefaultWr
 
     import play.api.libs.iteratee.Execution.Implicits.trampoline
 
-    bodyIterator.mapM(result =>
+    bodyAccumulator.mapFuture(result =>
       createHeadResult(result)
     )
   }
