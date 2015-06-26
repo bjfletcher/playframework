@@ -202,15 +202,16 @@ object ResultsSpec extends Specification {
       }
     }
 
-    "support sending partial content of file by sending content range header in response" in {
+    "support sending partial content of file by sending partial content headers in response" in {
       val file = new java.io.File("test.tmp")
       try {
         val out = new FileOutputStream(file)
         out.write(Array[Byte](1, 2, 3, 4, 5, 6, 7))
         out.close()
-        val rh = Ok.sendFile(file, range = Option("bytes=2-")).header
+        val rh = Ok.sendFile(file, range = Option("bytes=2-4")).header
         (rh.status aka "status" must_== PARTIAL_CONTENT) and
-          (rh.headers.get(CONTENT_RANGE) aka "content range" must beSome("bytes 2-6/7"))
+          (rh.headers.get(CONTENT_RANGE) aka "content range" must beSome("bytes 2-4/7")) and
+          (rh.headers.get(CONTENT_LENGTH) aka "content length" must beSome("3"))
       } finally {
         file.delete()
       }
