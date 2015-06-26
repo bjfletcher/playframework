@@ -424,15 +424,15 @@ trait Results {
       val inlineHeader: Map[String, String] = if (inline) Map.empty else Map(CONTENT_DISPOSITION -> ("attachment; filename=\"" + name + "\""))
 
       val (rangedStatus: Int, rangedHeaders: Map[String, String], fileSkip: Option[Long]) = range match {
-        case Some(RangeHeader(s, l)) =>
+        case Some(RangeHeader(f, l)) =>
           // serving a partial content request
-          val start: Long = s.toLong
-          val length: Long = if (l != "") l.toLong else content.length - 1
+          val firstBytePos: Long = f.toLong
+          val lastBytePos: Long = if (l != "") l.toLong else content.length - 1
           val headers: Map[String, String] = Map(
-            CONTENT_LENGTH -> s"${content.length - start.toLong}",
-            CONTENT_RANGE -> s"bytes $start-$length/${content.length}"
+            CONTENT_LENGTH -> s"${lastBytePos - firstBytePos + 1}",
+            CONTENT_RANGE -> s"bytes $firstBytePos-$lastBytePos/${content.length}"
           )
-          (PARTIAL_CONTENT, headers, Option(start))
+          (PARTIAL_CONTENT, headers, Option(firstBytePos))
         case _ =>
           // not a partial content request
           val headers: Map[String, String] = Map(CONTENT_LENGTH -> content.length.toString)
