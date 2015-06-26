@@ -210,7 +210,6 @@ object ResultsSpec extends Specification {
         out.close()
         val rh = Ok.sendFile(file, range = Option("bytes=2-")).header
         (rh.status aka "status" must_== PARTIAL_CONTENT) and
-          (rh.headers.get(CONNECTION) aka "connection" must beSome("keep-alive")) and
           (rh.headers.get(CONTENT_RANGE) aka "content range" must beSome("bytes 2-6/7"))
       } finally {
         file.delete()
