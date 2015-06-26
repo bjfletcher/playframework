@@ -583,7 +583,7 @@ object Enumerator {
    */
   def fromFile(file: java.io.File, chunkSize: Int = 1024 * 8, skip: Option[Long] = None)(implicit ec: ExecutionContext): Enumerator[Array[Byte]] = {
     val stream = new java.io.FileInputStream(file)
-    skip.map(stream.skip)
+    skip.foreach(stream.skip)
     fromStream(stream, chunkSize)(ec)
   }
 
