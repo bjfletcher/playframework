@@ -47,7 +47,7 @@ object JavaResults extends Results with DefaultWriteables with DefaultContentTyp
   def chunked(file: java.io.File, chunkSize: Int) = Enumerator.fromFile(file, chunkSize)(internalContext)
   def chunked(file: java.nio.file.Path, chunkSize: Int) = Enumerator.fromPath(file, chunkSize)(internalContext)
   def sendFile(status: play.api.mvc.Results.Status, file: java.io.File, inline: Boolean, filename: String) = status.sendFile(file, inline, _ => filename)
-  def sendFile(status: play.api.mvc.Results.Status, file: java.io.File, inline: Boolean, filename: String, range: String) = status.sendFile(file, inline, _ => filename, () => (), Option(range))
+  def sendFile(status: play.api.mvc.Results.Status, file: java.io.File, inline: Boolean, filename: String, range: String) = status.sendFile(file, inline, _ => if (filename == null) file.getName else filename, () => (), Option(range))
   def sendPath(status: play.api.mvc.Results.Status, path: java.nio.file.Path, inline: Boolean, filename: String) = status.sendPath(path, inline, _ => filename)
 }
 
