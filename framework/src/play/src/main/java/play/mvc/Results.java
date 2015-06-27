@@ -232,6 +232,18 @@ public class Results {
     }
 
     /**
+     * Generates a 200 OK file result as an attachment.
+     *
+     * @param content The file to send.
+     * @param inline Whether the file should be sent inline, or as an attachment.
+     * @param filename The name to send the file as, or null if inlined.
+     * @param range The byte range of the file to send.
+     */
+    public static Status ok(File content, boolean inline, String filename, String range) {
+        return new Status(JavaResults.Ok(), content, inline, filename, range);
+    }
+
+    /**
      * Generates a 200 OK chunked result.
      */
     public static Status ok(Chunks<?> chunks) {
@@ -1510,10 +1522,6 @@ public class Results {
 
         public Status(play.api.mvc.Results.Status status, File content, boolean inline, String filename) {
             this(status, content, inline, filename, null);
-        }
-
-        public Status(play.api.mvc.Results.Status status, File content, String range) {
-            this(status, content, false, content.getName(), range);
         }
 
         public Status(play.api.mvc.Results.Status status, File content, boolean inline, String filename, String range) {
